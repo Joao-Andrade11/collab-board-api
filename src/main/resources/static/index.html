@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Collab Board — Demo</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1e1f24; color: #eee; margin: 0; padding: 16px; }
+  h1 { font-size: 18px; }
+  #login { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  input, button { padding: 6px 10px; font-size: 14px; }
+  #status { font-size: 12px; color: #9ad; margin-bottom: 12px; }
+  .columns { display: flex; gap: 12px; }
+  .column { flex: 1; background: #2a2b32; border-radius: 8px; padding: 8px; min-height: 300px; }
+  .column h2 { font-size: 13px; text-transform: uppercase; color: #aaa; }
+  .card { background: #383a42; border-radius: 6px; padding: 8px; margin-bottom: 8px; cursor: grab; }
+  .card small { display: block; color: #999; margin-top: 4px; }
+  #newCard { display: flex; gap: 8px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<h1>Collab Board — cliente de teste (STOMP over SockJS)</h1>
+
+<div id="login">
+  <input id="username" placeholder="usuário">
+  <input id="password" placeholder="senha" type="password">
+  <button onclick="register()">Registrar</button>
+  <button onclick="login()">Login</button>
+  <input id="boardId" placeholder="board id" style="width: 80px">
+  <button onclick="createBoard()">Criar board</button>
+  <button onclick="connect()">Conectar / carregar</button>
+</div>
+<div id="status">desconectado</div>
+
+<div id="newCard" style="display:none">
+  <input id="cardTitle" placeholder="título do card">
+  <button onclick="createCard()">Adicionar card</button>
+</div>
+
+<div class="columns">
+  <div class="column"><h2>To Do</h2><div id="col-TODO"></div></div>
+  <div class="column"><h2>In Progress</h2><div id="col-IN_PROGRESS"></div></div>
+  <div class="column"><h2>Done</h2><div id="col-DONE"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+<script>
+  let token = null;
+  let stompClient = null;
+  let currentBoardId = null;
+
+  const api = (path, opts = {}) => fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(opts.headers || {})
+    }
+  }).then(async r => {
+    if (!r.ok) throw new Error(await r.text());
+    return r.status === 204 ? null : r.json();
+  });
+
+  async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    try {
+      const res = await api('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, email: username + '@example.com', displayName: username })
+      });
+      token = res.token;
+      setStatus('registrado e logado como ' + res.username);
+    } catch (e) { setStatus('erro no registro: ' + e.message); }
+  }
+
+  async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    try {
+      const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+      token = res.token;
+      setStatus('logado como ' + res.username);
+    } catch (e) { setStatus('erro no login: ' + e.message); }
+  }
+
+  async function createBoard() {
+    try {
+      const res = await api('/api/boards', { method: 'POST', body: JSON.stringify({ name: 'Board de teste' }) });
+      document.getElementById('boardId').value = res.id;
+      setStatus('board criado: ' + res.id);
+    } catch (e) { setStatus('erro ao criar board: ' + e.message); }
+  }
+
+  async function connect() {
+    if (!token) return setStatus('faça login primeiro');
+    currentBoardId = document.getElementById('boardId').value;
+    if (!currentBoardId) return setStatus('informe o board id');
+
+    const cards = await api(`/api/boards/${currentBoardId}/cards`);
+    ['TODO', 'IN_PROGRESS', 'DONE'].forEach(s => document.getElementById('col-' + s).innerHTML = '');
+    cards.forEach(renderCard);
+
+    if (stompClient) stompClient.deactivate();
+    stompClient = new StompJs.Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      connectHeaders: { Authorization: 'Bearer ' + token },
+      onConnect: () => {
+        setStatus('conectado ao board ' + currentBoardId);
+        document.getElementById('newCard').style.display = 'flex';
+        stompClient.subscribe('/topic/boards/' + currentBoardId, (message) => {
+          handleEvent(JSON.parse(message.body));
+        });
+      },
+      onStompError: (frame) => setStatus('erro STOMP: ' + frame.headers.message)
+    });
+    stompClient.activate();
+  }
+
+  function handleEvent(event) {
+    if (event.type === 'DELETED') {
+      document.querySelectorAll(`[data-card-id="${event.cardId}"]`).forEach(el => el.remove());
+      return;
+    }
+    document.querySelectorAll(`[data-card-id="${event.card.id}"]`).forEach(el => el.remove());
+    renderCard(event.card);
+  }
+
+  function renderCard(card) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.dataset.cardId = card.id;
+    el.innerHTML = `${card.title}<small>#${card.id} · pos ${card.position}</small>`;
+    el.onclick = () => moveCard(card);
+    document.getElementById('col-' + card.status).appendChild(el);
+  }
+
+  async function createCard() {
+    const title = document.getElementById('cardTitle').value;
+    if (!title) return;
+    await api(`/api/boards/${currentBoardId}/cards`, { method: 'POST', body: JSON.stringify({ title }) });
+    document.getElementById('cardTitle').value = '';
+  }
+
+  async function moveCard(card) {
+    const order = ['TODO', 'IN_PROGRESS', 'DONE'];
+    const next = order[(order.indexOf(card.status) + 1) % order.length];
+    await api(`/api/boards/${currentBoardId}/cards/${card.id}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: next, position: 0 })
+    });
+  }
+
+  function setStatus(msg) { document.getElementById('status').innerText = msg; }
+</script>
+</body>
+</html>
