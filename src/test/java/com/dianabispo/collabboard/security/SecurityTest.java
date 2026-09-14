@@ -49,6 +49,12 @@ class SecurityTest extends IntegrationTest {
     }
 
     @Test
+    void demoClient_isAccessibleWithoutToken() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void protectedEndpoint_withValidToken_returnsOk() throws Exception {
         AuthedUser user = registerNewUser();
 

@@ -1,5 +1,7 @@
 # Collab Board API
 
+![Demonstração do Collab Board: dois clientes sincronizando um card em tempo real](assets/collab-board-demo.gif)
+
 Quadro Kanban colaborativo em tempo real. Vários usuários autenticados atualizam o
 mesmo quadro simultaneamente e veem as mudanças uns dos outros instantaneamente,
 via WebSocket (STOMP), sem precisar dar refresh.
@@ -10,7 +12,7 @@ portfólio demonstra: sincronização de estado em tempo real entre múltiplos c
 
 ## Stack
 
-- Java 17
+- Java 25
 - Spring Boot 4 (Web, Security, Data JPA, Validation, WebSocket)
 - PostgreSQL
 - JWT (JJWT) para autenticação stateless
@@ -34,9 +36,9 @@ portfólio demonstra: sincronização de estado em tempo real entre múltiplos c
 
 ## Rodando localmente
 
-1. Suba um Postgres local (ou ajuste `application.properties`):
+1. Suba o Postgres:
    ```
-   docker run --name collab-board-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=collab_board -p 5432:5432 -d postgres:16
+   docker compose up -d
    ```
 2. Rode a aplicação:
    ```

@@ -1,157 +1,90 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Collab Board — Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collab Board</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #1e1f24; color: #eee; margin: 0; padding: 16px; }
-  h1 { font-size: 18px; }
-  #login { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  input, button { padding: 6px 10px; font-size: 14px; }
-  #status { font-size: 12px; color: #9ad; margin-bottom: 12px; }
-  .columns { display: flex; gap: 12px; }
-  .column { flex: 1; background: #2a2b32; border-radius: 8px; padding: 8px; min-height: 300px; }
-  .column h2 { font-size: 13px; text-transform: uppercase; color: #aaa; }
-  .card { background: #383a42; border-radius: 6px; padding: 8px; margin-bottom: 8px; cursor: grab; }
-  .card small { display: block; color: #999; margin-top: 4px; }
-  #newCard { display: flex; gap: 8px; margin-bottom: 12px; }
+  :root { --page:#f6f7f9; --surface:#fff; --muted:#f1f3f5; --border:#e2e5e9; --text:#1b1f27; --text-muted:#697386; --primary:#2457d6; --primary-hover:#1d48b5; --todo:#7c8493; --progress:#d07c13; --done:#16835a; --shadow:0 1px 2px rgba(16,24,40,.05),0 6px 18px rgba(16,24,40,.04); }
+  * { box-sizing:border-box; }
+  body { min-width:320px; margin:0; background:var(--page); color:var(--text); font:14px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  button,input { font:inherit; }
+  .app-shell { max-width:1440px; margin:0 auto; padding:28px 32px 40px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:26px; }
+  .brand { display:flex; align-items:center; gap:11px; }
+  .brand-mark { display:grid; grid-template-columns:repeat(2,7px); gap:3px; width:27px; height:27px; padding:5px; border-radius:8px; background:var(--primary); }
+  .brand-mark span { display:block; border-radius:2px; background:#fff; opacity:.95; }
+  .brand-mark span:last-child { grid-column:1 / span 2; }
+  .brand-title { font-size:17px; font-weight:700; letter-spacing:-.02em; }
+  .environment { color:var(--text-muted); font-size:12px; }
+  .control-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1px; overflow:hidden; margin-bottom:20px; border:1px solid var(--border); border-radius:12px; background:var(--border); box-shadow:var(--shadow); }
+  .control-section { padding:18px; background:var(--surface); }
+  .section-label { margin:0 0 12px; color:var(--text-muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .form-row,.board-controls { display:flex; align-items:center; gap:8px; }
+  input { width:100%; min-width:0; height:38px; padding:0 11px; border:1px solid #ccd1d9; border-radius:7px; outline:0; background:#fff; color:var(--text); transition:border-color .15s,box-shadow .15s; }
+  input::placeholder { color:#8b94a3; }
+  input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(36,87,214,.13); }
+  #boardId { max-width:115px; }
+  button { height:38px; padding:0 13px; border:1px solid #ccd1d9; border-radius:7px; background:#fff; color:#303744; font-size:13px; font-weight:600; white-space:nowrap; cursor:pointer; transition:background .15s,border-color .15s,color .15s,transform .15s; }
+  button:hover { border-color:#aab2bf; background:#f8f9fa; }
+  button:active { transform:translateY(1px); }
+  .button-primary { border-color:var(--primary); background:var(--primary); color:#fff; }
+  .button-primary:hover { border-color:var(--primary-hover); background:var(--primary-hover); }
+  #status { display:flex; align-items:center; gap:9px; min-height:42px; margin:0 0 16px; padding:10px 12px; border:1px solid #dfe3e8; border-radius:8px; background:#fff; color:var(--text-muted); font-size:13px; }
+  .status-icon { display:grid; flex:0 0 18px; width:18px; height:18px; place-items:center; border-radius:50%; background:#e9edf2; color:#687386; font-size:12px; font-weight:800; }
+  #status[data-state="success"] { border-color:#b7dfce; background:#effaf4; color:#176245; }
+  #status[data-state="success"] .status-icon { background:#cbeedc; color:#087443; }
+  #status[data-state="error"] { border-color:#f0c7c4; background:#fff4f3; color:#a8322b; }
+  #status[data-state="error"] .status-icon { background:#f9d7d4; color:#b42318; }
+  #status[data-state="info"] { border-color:#cbd8f7; background:#f3f6ff; color:#2451a6; }
+  #status[data-state="info"] .status-icon { background:#dbe5ff; color:#2457d6; }
+  #newCard { display:flex; max-width:390px; gap:8px; margin:0 0 20px; }
+  .columns { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+  .column { min-height:430px; padding:13px; border:1px solid var(--border); border-radius:12px; background:var(--muted); }
+  .column-header { display:flex; align-items:center; justify-content:space-between; margin:0 2px 13px; }
+  .column h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .column-dot { width:8px; height:8px; border-radius:50%; background:var(--todo); }
+  .column--progress .column-dot { background:var(--progress); } .column--done .column-dot { background:var(--done); }
+  .card { padding:13px; border:1px solid var(--border); border-radius:8px; background:var(--surface); box-shadow:0 1px 2px rgba(16,24,40,.04); cursor:pointer; transition:box-shadow .15s,transform .15s; }
+  .card + .card { margin-top:9px; } .card:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(16,24,40,.10); }
+  .card-title { display:block; color:var(--text); font-weight:600; overflow-wrap:anywhere; } .card small { display:block; margin-top:7px; color:var(--text-muted); font-size:12px; }
+  @media (max-width:760px) { .app-shell { padding:20px 16px 28px; } .topbar { align-items:flex-start; flex-direction:column; gap:6px; margin-bottom:20px; } .control-panel,.columns { grid-template-columns:1fr; } .columns { gap:12px; } .column { min-height:220px; } .form-row { flex-wrap:wrap; } .form-row input { flex:1 1 130px; } .board-controls { width:100%; } .board-controls button { flex:1; } }
 </style>
 </head>
 <body>
-<h1>Collab Board — cliente de teste (STOMP over SockJS)</h1>
-
-<div id="login">
-  <input id="username" placeholder="usuário">
-  <input id="password" placeholder="senha" type="password">
-  <button onclick="register()">Registrar</button>
-  <button onclick="login()">Login</button>
-  <input id="boardId" placeholder="board id" style="width: 80px">
-  <button onclick="createBoard()">Criar board</button>
-  <button onclick="connect()">Conectar / carregar</button>
-</div>
-<div id="status">desconectado</div>
-
-<div id="newCard" style="display:none">
-  <input id="cardTitle" placeholder="título do card">
-  <button onclick="createCard()">Adicionar card</button>
-</div>
-
-<div class="columns">
-  <div class="column"><h2>To Do</h2><div id="col-TODO"></div></div>
-  <div class="column"><h2>In Progress</h2><div id="col-IN_PROGRESS"></div></div>
-  <div class="column"><h2>Done</h2><div id="col-DONE"></div></div>
-</div>
-
+<main class="app-shell">
+  <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span class="brand-title">Collab Board</span></div><span class="environment">Quadro colaborativo em tempo real</span></header>
+  <section class="control-panel" aria-label="Controles do quadro">
+    <div class="control-section"><p class="section-label">Acesso</p><div class="form-row"><input id="username" placeholder="Nome de usuário" autocomplete="username"><input id="password" placeholder="Senha" type="password" autocomplete="current-password"><button type="button" class="button-primary" onclick="register()">Registrar</button><button type="button" onclick="login()">Entrar</button></div></div>
+    <div class="control-section"><p class="section-label">Quadro</p><div class="board-controls"><input id="boardId" placeholder="ID do quadro" inputmode="numeric"><button type="button" onclick="createBoard()">Novo quadro</button><button type="button" class="button-primary" onclick="connect()">Conectar</button></div></div>
+  </section>
+  <div id="status" data-state="neutral" role="status" aria-live="polite"><span class="status-icon" aria-hidden="true">i</span><span id="status-text">Desconectado</span></div>
+  <div id="newCard" style="display:none"><input id="cardTitle" placeholder="Título do card"><button type="button" class="button-primary" onclick="createCard()">Adicionar card</button></div>
+  <section class="columns" aria-label="Colunas do quadro">
+    <section class="column column--todo"><header class="column-header"><h2>Para fazer</h2><span class="column-dot" aria-hidden="true"></span></header><div id="col-TODO"></div></section>
+    <section class="column column--progress"><header class="column-header"><h2>Em andamento</h2><span class="column-dot" aria-hidden="true"></span></header><div id="col-IN_PROGRESS"></div></section>
+    <section class="column column--done"><header class="column-header"><h2>Concluído</h2><span class="column-dot" aria-hidden="true"></span></header><div id="col-DONE"></div></section>
+  </section>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
 <script>
   let token = null;
   let stompClient = null;
   let currentBoardId = null;
-
-  const api = (path, opts = {}) => fetch(path, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}),
-      ...(opts.headers || {})
-    }
-  }).then(async r => {
-    if (!r.ok) throw new Error(await r.text());
-    return r.status === 204 ? null : r.json();
-  });
-
-  async function register() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    try {
-      const res = await api('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, password, email: username + '@example.com', displayName: username })
-      });
-      token = res.token;
-      setStatus('registrado e logado como ' + res.username);
-    } catch (e) { setStatus('erro no registro: ' + e.message); }
-  }
-
-  async function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    try {
-      const res = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
-      token = res.token;
-      setStatus('logado como ' + res.username);
-    } catch (e) { setStatus('erro no login: ' + e.message); }
-  }
-
-  async function createBoard() {
-    try {
-      const res = await api('/api/boards', { method: 'POST', body: JSON.stringify({ name: 'Board de teste' }) });
-      document.getElementById('boardId').value = res.id;
-      setStatus('board criado: ' + res.id);
-    } catch (e) { setStatus('erro ao criar board: ' + e.message); }
-  }
-
-  async function connect() {
-    if (!token) return setStatus('faça login primeiro');
-    currentBoardId = document.getElementById('boardId').value;
-    if (!currentBoardId) return setStatus('informe o board id');
-
-    const cards = await api(`/api/boards/${currentBoardId}/cards`);
-    ['TODO', 'IN_PROGRESS', 'DONE'].forEach(s => document.getElementById('col-' + s).innerHTML = '');
-    cards.forEach(renderCard);
-
-    if (stompClient) stompClient.deactivate();
-    stompClient = new StompJs.Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      connectHeaders: { Authorization: 'Bearer ' + token },
-      onConnect: () => {
-        setStatus('conectado ao board ' + currentBoardId);
-        document.getElementById('newCard').style.display = 'flex';
-        stompClient.subscribe('/topic/boards/' + currentBoardId, (message) => {
-          handleEvent(JSON.parse(message.body));
-        });
-      },
-      onStompError: (frame) => setStatus('erro STOMP: ' + frame.headers.message)
-    });
-    stompClient.activate();
-  }
-
-  function handleEvent(event) {
-    if (event.type === 'DELETED') {
-      document.querySelectorAll(`[data-card-id="${event.cardId}"]`).forEach(el => el.remove());
-      return;
-    }
-    document.querySelectorAll(`[data-card-id="${event.card.id}"]`).forEach(el => el.remove());
-    renderCard(event.card);
-  }
-
-  function renderCard(card) {
-    const el = document.createElement('div');
-    el.className = 'card';
-    el.dataset.cardId = card.id;
-    el.innerHTML = `${card.title}<small>#${card.id} · pos ${card.position}</small>`;
-    el.onclick = () => moveCard(card);
-    document.getElementById('col-' + card.status).appendChild(el);
-  }
-
-  async function createCard() {
-    const title = document.getElementById('cardTitle').value;
-    if (!title) return;
-    await api(`/api/boards/${currentBoardId}/cards`, { method: 'POST', body: JSON.stringify({ title }) });
-    document.getElementById('cardTitle').value = '';
-  }
-
-  async function moveCard(card) {
-    const order = ['TODO', 'IN_PROGRESS', 'DONE'];
-    const next = order[(order.indexOf(card.status) + 1) % order.length];
-    await api(`/api/boards/${currentBoardId}/cards/${card.id}/move`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: next, position: 0 })
-    });
-  }
-
-  function setStatus(msg) { document.getElementById('status').innerText = msg; }
+  const api = (path, opts = {}) => fetch(path, { ...opts, headers: { 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer ' + token } : {}), ...(opts.headers || {}) } }).then(async response => { if (!response.ok) throw new Error(await getErrorMessage(response)); return response.status === 204 ? null : response.json(); });
+  async function getErrorMessage(response) { const body = await response.text(); try { return readableError(JSON.parse(body).message); } catch { return 'Tente novamente em alguns instantes.'; } }
+  function readableError(message = '') { if (message === 'Username already taken') return 'Este nome de usuário já está em uso. Escolha outro.'; if (message === 'Email already registered') return 'Este nome de usuário já está em uso. Escolha outro.'; if (/password.*tamanho/i.test(message)) return 'A senha precisa ter pelo menos 8 caracteres.'; if (/username.*tamanho/i.test(message)) return 'O nome de usuário precisa ter entre 3 e 30 caracteres.'; if (/email/i.test(message)) return 'Use apenas letras, números, ponto, hífen ou underscore no nome de usuário.'; if (message === 'Invalid credentials') return 'Usuário ou senha incorretos.'; return message || 'Tente novamente em alguns instantes.'; }
+  function validateRegistration(username, password) { if (username.length < 3 || username.length > 30) return 'O nome de usuário precisa ter entre 3 e 30 caracteres.'; if (!/^[a-zA-Z0-9._-]+$/.test(username)) return 'Use apenas letras, números, ponto, hífen ou underscore no nome de usuário.'; if (password.length < 8) return 'A senha precisa ter pelo menos 8 caracteres.'; return null; }
+  async function register() { const username = document.getElementById('username').value.trim(); const password = document.getElementById('password').value; const validationError = validateRegistration(username, password); if (validationError) return setStatus(validationError, 'error'); try { const response = await api('/api/auth/register', { method:'POST', body:JSON.stringify({ username, password, email:username + '@example.com', displayName:username }) }); token = response.token; setStatus('Registrado e conectado como ' + response.username + '.', 'success'); } catch (error) { setStatus(error.message, 'error'); } }
+  async function login() { const username = document.getElementById('username').value.trim(); const password = document.getElementById('password').value; try { const response = await api('/api/auth/login', { method:'POST', body:JSON.stringify({ username, password }) }); token = response.token; setStatus('Conectado como ' + response.username + '.', 'success'); } catch (error) { setStatus(error.message, 'error'); } }
+  async function createBoard() { try { const response = await api('/api/boards', { method:'POST', body:JSON.stringify({ name:'Board de teste' }) }); document.getElementById('boardId').value = response.id; setStatus('Quadro ' + response.id + ' criado. Conecte-se para acompanhar as alterações.', 'success'); } catch (error) { setStatus(error.message, 'error'); } }
+  async function connect() { if (!token) return setStatus('Entre ou registre-se antes de conectar.', 'error'); currentBoardId = document.getElementById('boardId').value; if (!currentBoardId) return setStatus('Informe o ID do quadro.', 'error'); try { const cards = await api(`/api/boards/${currentBoardId}/cards`); ['TODO','IN_PROGRESS','DONE'].forEach(status => document.getElementById('col-' + status).replaceChildren()); cards.forEach(renderCard); if (stompClient) stompClient.deactivate(); stompClient = new StompJs.Client({ webSocketFactory:() => new SockJS('/ws'), connectHeaders:{ Authorization:'Bearer ' + token }, onConnect:() => { setStatus('Conectado ao quadro ' + currentBoardId + '.', 'success'); document.getElementById('newCard').style.display = 'flex'; stompClient.subscribe('/topic/boards/' + currentBoardId, message => handleEvent(JSON.parse(message.body))); }, onStompError:frame => setStatus('Erro de conexão em tempo real: ' + frame.headers.message, 'error') }); stompClient.activate(); } catch (error) { setStatus(error.message, 'error'); } }
+  function handleEvent(event) { if (event.type === 'DELETED') { document.querySelectorAll(`[data-card-id="${event.cardId}"]`).forEach(element => element.remove()); return; } document.querySelectorAll(`[data-card-id="${event.card.id}"]`).forEach(element => element.remove()); renderCard(event.card); }
+  function renderCard(card) { const cardElement = document.createElement('article'); cardElement.className = 'card'; cardElement.dataset.cardId = card.id; cardElement.title = 'Clique para mover o card para a próxima coluna'; const title = document.createElement('span'); title.className = 'card-title'; title.textContent = card.title; const metadata = document.createElement('small'); metadata.textContent = '#' + card.id + ' · Posição ' + card.position; cardElement.append(title, metadata); cardElement.onclick = () => moveCard(card); document.getElementById('col-' + card.status).appendChild(cardElement); }
+  async function createCard() { const input = document.getElementById('cardTitle'); const title = input.value.trim(); if (!title) return setStatus('Informe um título para o card.', 'error'); try { await api(`/api/boards/${currentBoardId}/cards`, { method:'POST', body:JSON.stringify({ title }) }); input.value = ''; input.focus(); } catch (error) { setStatus(error.message, 'error'); } }
+  async function moveCard(card) { const order = ['TODO','IN_PROGRESS','DONE']; const nextStatus = order[(order.indexOf(card.status) + 1) % order.length]; try { await api(`/api/boards/${currentBoardId}/cards/${card.id}/move`, { method:'PATCH', body:JSON.stringify({ status:nextStatus, position:0 }) }); } catch (error) { setStatus(error.message, 'error'); } }
+  function setStatus(message, state = 'info') { const status = document.getElementById('status'); status.dataset.state = state; status.querySelector('.status-icon').textContent = state === 'success' ? '✓' : state === 'error' ? '!' : 'i'; document.getElementById('status-text').innerText = message; }
 </script>
 </body>
 </html>
